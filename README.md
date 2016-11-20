@@ -1,16 +1,22 @@
 # Z-rapporter i CYB
-Denne mappen inneholder scripts som brukes for håndtering av kasseoppgjør i Escape (for CYB).
+
+Dette repoet genererer oppgjørsrapport i PDF med data som sendes fra
+et Google Spreadsheet CYB bruker. PDF-filene genereres ved at det først
+opprettes et LaTeX-dokument som så konverteres til PDF.
+
+Dataene lagres også i `reports.json` for senere bruk til importering
+til regnskapssystemet.
 
 Systemet er laget av Henrik Steen som var kasserer i 2014 og 2015.
 
-## Generering av PDF
-1. Alle z-rapporter fra kassa slås inn i et regneark i Google Docs.
-2. Scripts i Google Docs eksporterer dette til JSON som sendes til ```retrieve.py```.
-3. Scriptet ```retrieve.py``` genererer en LaTeX-fil med inndataen, som så genererer PDF-filen som kan printes ut.
+## Docker-oppsett
 
-## Importering til regnskapssystem
-Se [egen beskrivelse](../tripletex/README.md) om dette.
+### Bygge container
 
-## Feilsøking
-Hvis man får meldingen 'Premature end of script headers: retrieve.cgi' på nettsia så er det enten feil i scriptet,
-eller så er det mest sannsynlig feil tilganger. Sørg for at +x er korrekt satt!
+```bash
+docker build -t cyb/z-backend .
+```
+
+### Kjøre container
+
+Se `run.sh`

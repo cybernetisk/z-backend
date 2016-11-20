@@ -1,13 +1,9 @@
-#!/bin/env python
-# -*- coding: UTF-8 -*-
-import cgi
 import sys
 import os
 import re
 import subprocess
-import cgitb
+import json
 
-LOGDIR = '/hom/cyb/www_docs/okonomi/z/logdir'
 VAT_CODES = {
     0: 0,
     3: 25,
@@ -15,17 +11,7 @@ VAT_CODES = {
     5: 0,
     6: 0
 }
-ARCHIVE_URL = 'http://cyb.no/okonomi/z/archive/'
-
-# override settings in settings.py
-if os.path.isfile('settings.py'):
-    from settings import *
-
-
-# kjipe Ifi som har gammel programvare...
-lib_path = os.path.abspath('simplejson-2.1.0')
-sys.path.append(lib_path)
-import simplejson as json
+ARCHIVE_URL = 'https://in.cyb.no/z-backend/archive/'
 
 
 def get_int(val):
@@ -39,14 +25,6 @@ def get_int(val):
 
 class ZRetrieve:
     @staticmethod
-    def get_data_or_exit():
-        form = cgi.FieldStorage()
-        if 'data' not in form:
-            print "Invalid data"
-            sys.exit(0)
-        return json.loads(form['data'].value, 'utf-8')
-
-    @staticmethod
     def exportJSON(data):
         """
         1. load the existing data
@@ -54,21 +32,20 @@ class ZRetrieve:
         3. save new list
         """
 
-        f = open('reports.json', 'r+')
-        fdata = f.read()
-        f.seek(0)
+        with open('reports.json', 'r+') as f:
+            fdata = f.read()
+            f.seek(0)
 
-        if len(fdata) == 0:
-            x = {'list': []}
-        else:
-            x = json.loads(fdata, 'utf-8')
+            if len(fdata) == 0:
+                x = {'list': []}
+            else:
+                x = json.loads(fdata, 'utf-8')
 
-        x['list'].append(data)
+            x['list'].append(data)
 
-        x = json.dumps(x)  # .encode('utf-8')
-        f.write(x)
-        f.truncate()
-        f.close()
+            x = json.dumps(x)
+            f.write(x)
+            f.truncate()
 
     @staticmethod
     def get_z_name(zdata):
@@ -84,16 +61,6 @@ class ZRetrieve:
         prettybuilddate = ''.join(zdata['builddate'][:10].split('.')[::-1]) + '_' + zdata['builddate'][11:13] + zdata['builddate'][14:16]
         filename = '%s-%s-%s' % (prettydate, re.sub(r'[^a-zA-Z0-9]', '_', z_name), prettybuilddate)
         return filename
-
-    @staticmethod
-    def handle():
-        zdata = ZRetrieve.get_data_or_exit()
-
-        template = ZTemplate()
-        filename = ZRetrieve.get_report_filename(zdata)
-        template.generate(zdata, filename)
-
-        ZRetrieve.exportJSON(zdata)
 
 
 class ZTemplate:
@@ -122,10 +89,8 @@ class ZTemplate:
 
     @staticmethod
     def get_template(file='template.tex'):
-        f = open(file, 'r')
-        data = f.read()
-        data = data.decode('utf-8')
-        f.close()
+        with open(file, 'r') as f:
+            data = f.read()
         return data
 
     @staticmethod
@@ -142,7 +107,7 @@ class ZTemplate:
             '^':  r'\^',  # r'\letterhat{}',
             '\\': r'\\',  # r'\letterbackslash{}',
         }
-        return "".join([CHARS.get(char, char) for char in unicode(data).strip()])
+        return "".join([CHARS.get(char, char) for char in str(data).strip()])
 
     @staticmethod
     def get_trans(data, addsum=0):
@@ -192,15 +157,11 @@ class ZTemplate:
 
     @staticmethod
     def generate_pdf(data, filename):
-        f = open('archive/%s.tex' % filename, 'w')
-        data = data.encode('utf-8')
-        f.write(data)
-        f.close()
+        with open('archive/%s.tex' % filename, 'w') as f:
+            f.write(data)
 
         p = subprocess.Popen(["pdflatex", "%s.tex" % filename], stdout=subprocess.PIPE, cwd=os.path.abspath('archive'))
         out, err = p.communicate()
-
-        print '%s%s.pdf' % (ARCHIVE_URL, filename)
 
 
 # variable data is a associative array with the following keys:
@@ -245,11 +206,3 @@ class Transaction:
             self.vat = get_int(m.group(1)) or 0
             self.project = get_int(m.group(4)) or 0
 
-
-if __name__ == '__main__':
-    cgitb.enable(display=0, logdir=LOGDIR)
-
-    print "Content-Type: text/plain"
-    print
-
-    ZRetrieve.handle()

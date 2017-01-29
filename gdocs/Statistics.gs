@@ -5,22 +5,22 @@
 function getZSheetList(space) {
   var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
   var list = [];
-  
+
   for (var i in sheets) {
     var sheet = sheets[i];
     var name = sheet.getName();
-    
+
     // make sure we ignore certain sheets
     // we are only interested in real Zs
     //if (name == "MAL" || name == "Statistikk" || name.substring(0, 2) == "X:")
     var p = /[0-9]/; // all real Z should contain a number
     if (!p.test(name) || name.substring(0, 2) == "X:")
       continue;
-    
+
     list.push(sheet);
-    
+
   }
-  
+
   return list;
 }
 
@@ -33,7 +33,7 @@ function getZDataDetails()
   var datasets = [];
   var debetlist = [];
   var kreditlist = [];
-  
+
   // create data for the "view"
   for (var sheet_i in sheets) {
     var sheet = sheets[sheet_i];
@@ -42,7 +42,7 @@ function getZDataDetails()
     data['debetmap'] = {};
     data['kreditmap'] = {};
     data['salestotal'] = 0;
-    
+
     // mapping of debets
     for (var i in data['debet']) {
       var d = data['debet'][i];
@@ -50,10 +50,10 @@ function getZDataDetails()
       if (debetlist.indexOf(id) == -1) {
         debetlist.push(id);
       }
-      
+
       data['debetmap'][id] = d[2];
     }
-    
+
     // mapping of kredits
     for (var i in data['sales']) {
       var d = data['sales'][i];
@@ -61,17 +61,17 @@ function getZDataDetails()
       if (kreditlist.indexOf(id) == -1) {
         kreditlist.push(id);
       }
-      
+
       data['kreditmap'][id] = d[2];
       data['salestotal'] += d[2];
     }
-    
+
     datasets.push(data);
   }
-  
+
   debetlist.sort();
   kreditlist.sort();
-  
+
   return {
     'datasets': datasets,
     'debetlist': debetlist,
@@ -89,10 +89,10 @@ function getZStats() {
   var datasets = x['datasets'];
   var debetlist = x['debetlist'];
   var kreditlist = x['kreditlist'];
-  
+
   // create the "view"
   var ret = [];
-  
+
   var headings = [];
   headings.push('');
   headings.push('Dato');
@@ -121,10 +121,10 @@ function getZStats() {
     headings.push('  '+debetlist[i]);
   }
   ret.push(headings);
-  
+
   for (var data_i in datasets) {
     var data = datasets[data_i];
-    
+
     var d = [];
     d.push(data['z']);
     d.push(getRangeOnSheet(data['sheet'], "Zdato").getValue());
@@ -132,36 +132,36 @@ function getZStats() {
     d.push(data['type']);
     d.push('');
     d.push('');
-    
+
     // cash
     for (var i = 0; i < data['cash']['start'].length; i++) {
       d.push(data['cash']['end'][i] - data['cash']['start'][i]);
     }
-    
+
     d.push('');
     d.push('');
-    
+
     // kredits
     for (var i in kreditlist) {
       var id = kreditlist[i];
-      
+
       d.push(data['kreditmap'][id]);
     }
     d.push(data['salestotal']);
-    
+
     d.push('');
     d.push('');
-    
+
     // debets
     for (var i in debetlist) {
       var id = debetlist[i];
-      
+
       d.push(data['debetmap'][id]);
     }
-    
+
     ret.push(d);
   }
-  
+
   if (ret.length == 0) return [['']];
   return ret;
 }
@@ -174,14 +174,14 @@ function getZDataset() {
   var datasets = x['datasets'];
   var debetlist = x['debetlist'];
   var kreditlist = x['kreditlist'];
-  
+
   // create the "view"
   var ret = [];
   ret.push([
     'Znr',
     'Dato',
-    'År',
-    'Måned',
+    'Ã…r',
+    'MÃ¥ned',
     'Dag',
     'Ansvarlig',
     'Type',
@@ -189,12 +189,12 @@ function getZDataset() {
     'Felt',
     'Verdi'
   ]);
-  
+
   for (var data_i in datasets) {
     var data = datasets[data_i];
     var date = getRangeOnSheet(data['sheet'], "Zdato").getValue();
     var date2 = new Date(date);
-    
+
     function genRow(cat, name, value) {
       var d = [];
       d.push(data['z']);
@@ -209,30 +209,30 @@ function getZDataset() {
       d.push(value);
       ret.push(d);
     }
-    
+
     // cash
     var cash_list = [1, 5, 10, 20, 50, 100, 200, 500, 1000];
     for (var i = 0; i < data['cash']['start'].length; i++) {
-      genRow("3 Kontantvalør (antall)", cash_list[i], data['cash']['end'][i] - data['cash']['start'][i]);
+      genRow("3 KontantvalÃ¸r (antall)", cash_list[i], data['cash']['end'][i] - data['cash']['start'][i]);
     }
-    
+
     // debets
     for (var i in debetlist) {
       var id = debetlist[i];
       if (id in data['debetmap'])
         genRow("2 Debet", id, data['debetmap'][id]);
     }
-    
+
     // kredits
     for (var i in kreditlist) {
       var id = kreditlist[i];
       if (id in data['kreditmap'])
         genRow("1 Kredit", id, data['kreditmap'][id]);
     }
-    
+
     genRow("0 Stats", "Antall Z", 1);
   }
-  
+
   return ret;
 }
 

@@ -4,7 +4,11 @@
  */
 
 var settings = {
-  "destaddr": "http://cyb.no/okonomi/z/retrieve.cgi"
+  "debug": false,
+  "destaddr": "https://in.cyb.no/z-backend/generate",
+  "statssheet": "1oH-Dy2OKcwxcGDD_QDuG4hGxpZPN_7SPIjFKsHHoF1g",
+  "maindrawername": "Escape-kassa",
+  "templatesheet": "MAL"
 };
 
 function cleanDoc() {
@@ -16,13 +20,13 @@ function cleanDoc() {
   }
 }
 
-function onOpen() { 
+function onOpen() {
   var s = SpreadsheetApp.getActiveSpreadsheet();
-  
+
   // add menu entries
-  s.addMenu("Z-rapport", [
+  var entries = [
     {
-      name: "Opprett neste normale Z (for Escape-kassa)",
+      name: "Opprett neste normale Z (for " + settings.maindrawername + ")",
       functionName: "newNormalZ"
     },
     {
@@ -30,29 +34,35 @@ function onOpen() {
       functionName: "newZ"
     },
     {
-      name: "Sett korrekt navn på arket",
+      name: "Sett korrekt navn pÃ¥ arket",
       functionName: "setName"
     },
     {
-      name: "Søk etter Z-nr",
+      name: "SÃ¸k etter Z-nr",
       functionName: "findZ"
-    },
-    {
+    }
+  ]
+
+  if (settings.statssheet !== '') {
+    entries.push({
       name: "Statistikk",
       functionName: "showStats"
-    },
-    {
-      name: "Lag PDF for utskrift",
-      functionName: "exportData"
-    }
-  ]);
+    });
+  }
+
+  entries.push({
+    name: "Lag PDF for utskrift",
+    functionName: "exportData"
+  })
+
+  s.addMenu("Z-rapport", entries);
 }
 
 /**
  * Avoid changes to template
  */
 function onEdit(e) {
-  if (e.range.getSheet().getName() == "MAL" && e.range.getValue() != "") {
+  if (e.range.getSheet().getName() == settings.templatesheet && e.range.getValue() != "") {
     Browser.msgBox("Ikke endre malen! Bruk Z-rapport-menyen!");
   }
 }
@@ -66,12 +76,12 @@ function getId() {
  * Open stats sheet
  */
 function showStats() {
-  var href = SpreadsheetApp.openById("1oH-Dy2OKcwxcGDD_QDuG4hGxpZPN_7SPIjFKsHHoF1g").getUrl();
-  
+  var href = SpreadsheetApp.openById(settings.statssheet).getUrl();
+
   var app = UiApp.createApplication().setHeight(50).setWidth(350);
   app.setTitle("Vis statistikk");
   var link = app.createAnchor(href, href).setId("link");
-  app.add(link);  
+  app.add(link);
   var doc = SpreadsheetApp.getActive();
   doc.show(app);
 }
@@ -101,10 +111,10 @@ function newNormalZ() {
 
 function createNewZFromTemplate(znr, date) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var s = ss.getSheetByName("MAL").copyTo(ss);
+  var s = ss.getSheetByName(settings.templatesheet).copyTo(ss);
   s.activate();
   ss.moveActiveSheet(2); // place after template
-  
+
   getRange("Znr").setValue(znr);
   getRange("Zdato").setValue(date);
   setName();
@@ -135,19 +145,19 @@ function nextZNum() {
  * Automatically set name on the sheet
  */
 function setName() {
-  if (SpreadsheetApp.getActiveSheet().getName() == "Mal") {
-    Browser.msgBox("Du må kopiere malen først!");
+  if (SpreadsheetApp.getActiveSheet().getName() == settings.templatesheet) {
+    Browser.msgBox("Du mÃ¥ kopiere malen fÃ¸rst!");
     return;
   }
-  
+
   if (SpreadsheetApp.getActiveSheet().getName().substring(2) == "X:") {
-    Browser.msgBox("Arket har fått satt manuelt navn og nytt navn må settes manuelt!");
+    Browser.msgBox("Arket har fÃ¥tt satt manuelt navn og nytt navn mÃ¥ settes manuelt!");
     return;
   }
-  
+
   var nr = getRange('Znr').getValue();
   var newname = "";
-  
+
   var getDate = function () {
     var dato = getRange('Zdato').getValue();
     if (typeof dato != 'object') {
@@ -156,35 +166,35 @@ function setName() {
     }
     return Utilities.formatDate(dato, "Europe/Oslo", "yyyy-MM-dd");
   }
-  
+
   // integers = Z from 'kassesystemet'
   if (nr % 1 === 0) {
     newname = "Z" + nr;
   }
-  
+
   // 'medlemssalg' needs it's own identifier
   else if (nr == "MEDLEM") {
     dato = getDate();
     if (!dato) return;
     newname = "MEDLEM-" + dato;
   }
-  
+
   else if (nr.length > 0) {
     dato = getDate();
     if (!dato) return;
     newname = nr + "-" + dato;
   }
-  
+
   if (newname == "") {
-    Browser.msgBox("Mangler inndata for å avgjøre navn!");
+    Browser.msgBox("Mangler inndata for Ã¥ avgjÃ¸re navn!");
     return;
   }
-  
+
   if (SpreadsheetApp.getActiveSpreadsheet().getSheetByName(newname)) {
     Browser.msgBox("Det finnes allerede en lik Z-rapport!");
     return;
   }
-  
+
   SpreadsheetApp.getActiveSheet().setName(newname);
 }
 
@@ -194,7 +204,7 @@ function setName() {
 function findZ() {
   var z = Browser.inputBox("Hvilken Z leter du etter? (skriv kun nr)");
   if (z == "") return;
-  
+
   var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Z"+z);
   if (s) {
     s.activate();
@@ -209,23 +219,41 @@ function findZ() {
 function getZData(sheet) {
   var commentrange = getRangeOnSheet(sheet, "Kommentar");
   var isOldLayout = commentrange.getColumn() == 2;
-  
+
   /**
    * For sales and debet, select the valid columns.
    * The data should be [account-info, description, value]
    */
   function getSalesAndDebetRows(data) {
-    var newdata = [];
+    var map = {};
+
+    // merge amounts in case there are entries with same accounts and texts
     for (x in data) {
-      if (data[x][0] != "" && data[x][4] != "") {
-        // as of 2014-10-28 the two first columns have switched places
-        if (isOldLayout) {
-          newdata.push([data[x][0], data[x][1], data[x][4]]);
-        } else {
-          newdata.push([data[x][1], data[x][0], data[x][4]]);
-        }
+      if (data[x][1] == "" || data[x][4] == "") {
+        continue;
+      }
+
+      // as of 2014-10-28 the two first columns have switched places
+      var accountdetails = isOldLayout ? data[x][0] : data[x][1];
+      var text = isOldLayout ? data[x][1] : data[x][0];
+      var amount = data[x][4];
+
+      if (!map[accountdetails]) {
+        map[accountdetails] = {};
+      }
+      if (!map[accountdetails][text]) {
+        map[accountdetails][text] = 0;
+      }
+      map[accountdetails][text] += amount;
+    }
+
+    var newdata = [];
+    for (i in map) {
+      for (j in map[i]) {
+        newdata.push([i, j, map[i][j]]);
       }
     }
+
     return newdata;
   }
   function getSales(sheet) {
@@ -234,7 +262,7 @@ function getZData(sheet) {
   function getDebet(sheet) {
     return getSalesAndDebetRows(getRangeOnSheet(sheet, "D_G1").getValues());
   }
-  
+
   /**
    * Extract first column from a data set
    */
@@ -245,15 +273,15 @@ function getZData(sheet) {
     }
     return newdata;
   }
-  
+
   /**
    * Get dayname from daynumber
    */
   function getWeek(val) {
     var day = Utilities.formatDate(val, "Europe/Oslo", "u");
-    return ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"][day-1];
+    return ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "LÃ¸rdag", "SÃ¸ndag"][day-1];
   }
-  
+
   /**
    * Build data to send to generator
    */
@@ -282,19 +310,24 @@ function getZData(sheet) {
  */
 function exportData() {
   var data = getZData(SpreadsheetApp.getActiveSheet());
-  
+
   if (!data['z'] || !data['date'] || !data['responsible'] || !data['type']) {
-    Browser.msgBox("Du må fylle ut alle de fire gule feltene øverst!");
+    Browser.msgBox("Du mÃ¥ fylle ut alle de fire gule feltene Ã¸verst!");
     return;
   }
-  
+
   // send data
   var payload = {
     "data": JSON.stringify(data)
   };
-  var ret = sendData(payload);
-  
-  showURL(ret.trim());
+
+  // show payload if debugging - else send to api
+  if (settings.debug) {
+    Browser.msgBox(payload.data);
+  } else {
+    var ret = sendData(payload);
+    showURL(ret.trim());
+  }
 }
 
 
@@ -305,19 +338,19 @@ function sendData(payload) {
     "method" : "post",
     "payload" : payload
   };
-  
+
   Logger.log(payload);
-  
+
   var response = UrlFetchApp.fetch(settings.destaddr, options);
   return response.getContentText();
 }
 
 
 function showURL(href){
-  var app = UiApp.createApplication().setHeight(50).setWidth(350);
+  var app = UiApp.createApplication().setHeight(100).setWidth(350);
   app.setTitle("Hent ned PDF");
   var link = app.createAnchor(href, href).setId("link");
-  app.add(link);  
+  app.add(link);
   var doc = SpreadsheetApp.getActive();
   doc.show(app);
 }

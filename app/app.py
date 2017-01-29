@@ -3,7 +3,7 @@ app = Flask(__name__)
 
 import html
 import sys
-import simplejson
+import json
 import settings
 from z import ZRetrieve, ZTemplate
 

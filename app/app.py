@@ -4,7 +4,8 @@ app = Flask(__name__)
 import html
 import sys
 import simplejson
-from z import *
+import settings
+from z import ZRetrieve, ZTemplate
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -21,7 +22,7 @@ def handle_data():
     template.generate(zdata, filename)
     ZRetrieve.exportJSON(zdata)
 
-    return Response('%s%s.pdf\n' % (ARCHIVE_URL, filename), mimetype='text/plain')
+    return Response('%s%s.pdf\n' % (settings.ARCHIVE_URL, filename), mimetype='text/plain')
 
 @app.route('/archive/<path:path>')
 def serve_archive(path):

@@ -4,14 +4,7 @@ import re
 import subprocess
 import json
 
-VAT_CODES = {
-    0: 0,
-    3: 25,
-    31: 15,
-    5: 0,
-    6: 0
-}
-ARCHIVE_URL = 'https://in.cyb.no/z-backend/archive/'
+import settings
 
 
 def get_int(val):
@@ -118,8 +111,8 @@ class ZTemplate:
 
             mva = ""
             if t.vat != 0:
-                if t.vat in VAT_CODES:
-                    mva = "%s (%d\\%%)" % (ZTemplate.safestring(t.vat), VAT_CODES[t.vat])
+                if t.vat in settings.VAT_CODES:
+                    mva = "%s (%d\\%%)" % (ZTemplate.safestring(t.vat), settings.VAT_CODES[t.vat])
                 else:
                     mva = ZTemplate.safestring(t.vat) + '\\% (?)'
 

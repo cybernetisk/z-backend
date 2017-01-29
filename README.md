@@ -11,12 +11,5 @@ Systemet er laget av Henrik Steen som var kasserer i 2014 og 2015.
 
 ## Docker-oppsett
 
-### Bygge container
-
-```bash
-docker build -t cyb/z-backend .
-```
-
-### Kjøre container
-
-Se `run.sh`
+Se https://github.com/cybrairai/drift/tree/master/z-backend
+for hvordan dette faktisk brukes.

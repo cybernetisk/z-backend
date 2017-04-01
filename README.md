@@ -11,5 +11,10 @@ Systemet er laget av Henrik Steen som var kasserer i 2014 og 2015.
 
 ## Docker-oppsett
 
+Repoet er koblet opp mot Docker Cloud som bygger et Docker image
+hver gang vi pusher til repoet.
+
+https://cloud.docker.com/swarm/cybrairai/repository/docker/cybrairai/z-backend/general
+
 Se https://github.com/cybrairai/drift/tree/master/z-backend
 for hvordan dette faktisk brukes.

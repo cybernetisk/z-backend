@@ -16,7 +16,7 @@ def handle_data():
     if 'data' not in request.form:
         raise Exception('Missing data')
 
-    zdata = json.loads(request.form['data'], 'utf-8')
+    zdata = json.loads(request.form['data'])
     filename = ZRetrieve.get_report_filename(zdata)
     template = ZTemplate()
     template.generate(zdata, filename)

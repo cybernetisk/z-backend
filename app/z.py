@@ -31,7 +31,7 @@ class ZRetrieve:
             if len(fdata) == 0:
                 x = {'list': []}
             else:
-                x = json.loads(fdata, 'utf-8')
+                x = json.loads(fdata)
 
             x['list'].append(data)
 
